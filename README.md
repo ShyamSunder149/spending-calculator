@@ -4,6 +4,13 @@ This is basically one of my needs to do a finance manager and I don't want to ma
 
 #### To-do :
 - [ ] fix category expenses  
-- [ ] Pretty print output
+- [x] Pretty print output
+- [x] Table display
+- [ ] Export to csv option
+- [ ] flags implementation
+- [ ] Average per month spending calculation 
+- [ ] Calculate big expenses separately
+- [ ] Categorise big expenses 
+- [ ] add separate implementation to add categories 
 - [ ] Refactor the code 
 

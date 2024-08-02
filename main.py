@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
 import copy
+from prettytable import PrettyTable 
 
 class Expense:
     
@@ -54,11 +55,19 @@ def main() :
                         monthly_spendings[month].category_spendings["stocks"] += amount 
                     elif i in online_purchase :
                         monthly_spendings[month].category_spendings["online_purchase"] += amount 
-    
+   
+    table = PrettyTable()
+    table.field_names = ["Month", "Debit", "Credit", "Net", "Travel", "Entertainment", "Online Purchase", "Stocks"]
     for i in months:
-        print(f'Net Expense : {monthly_spendings[i].total_debit - monthly_spendings[i].total_credit}')
-        print(f'Total credit : {monthly_spendings[i].total_credit}')
-        print(f'Total Debit : {monthly_spendings[i].total_debit}')
-        print(f'Category Spendings : {monthly_spendings[i].category_spendings}')
+        table.add_row([i,
+                      monthly_spendings[i].total_debit, 
+                      monthly_spendings[i].total_credit, 
+                      monthly_spendings[i].total_debit-monthly_spendings[i].total_credit, 
+                      monthly_spendings[i].category_spendings["travel"], 
+                      monthly_spendings[i].category_spendings["entertainment"], 
+                      monthly_spendings[i].category_spendings["online_purchase"],
+                      monthly_spendings[i].category_spendings["stocks"]])
+    print(table)
+
 if __name__ == "__main__" :
     main()
