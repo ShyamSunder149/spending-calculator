@@ -12,6 +12,7 @@ And you will get what you are looking for lol
 ### Features : 
 - Export to Csv 
 - Table view of expenses month wise
+- Average per month net expense 
 
 #### To-do :
 - [x] fix category expenses  
@@ -20,9 +21,9 @@ And you will get what you are looking for lol
 - [x] Export to csv option
 - [x] flags implementation
 - [ ] generalise year implementation 
-- [ ] Average per month spending calculation 
+- [x] Average per month spending calculation 
 - [ ] Calculate big expenses separately
 - [ ] Categorise big expenses 
 - [ ] add separate implementation to add categories 
-- [ ] Refactor the code 
+- [x] Refactor the code 
 

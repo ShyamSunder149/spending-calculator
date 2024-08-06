@@ -1,90 +1,125 @@
 from bs4 import BeautifulSoup
 import argparse
 import copy
-from prettytable import PrettyTable 
+from prettytable import PrettyTable
 
 class Expense:
-    
     def __init__(self):
         self.total_debit = 0
         self.total_credit = 0
         self.category_spendings = {}
 
-def check_category(category : str, expense : Expense) -> int : 
-    if category in expense.category_spendings.keys() :
-        return expense.category_spendings[category]
-    return 0
+def check_category(category: str, expense: Expense) -> int:
+    return expense.category_spendings.get(category, 0)
 
-def check_add(options : list[str], text : str, expense : Expense, category : str, amount : int) :
-    for i in options :
-        if i in text :
-            if category in expense.category_spendings.keys() :
-                expense.category_spendings[category] += amount
-            else :
-                expense.category_spendings[category] = amount
+def add_expense_to_category(options: list[str], text: str, expense: Expense, category: str, amount: int):
+    if any(option in text for option in options):
+        expense.category_spendings[category] = expense.category_spendings.get(category, 0) + amount
 
-def main() :
+def parse_html_file(file_path: str) -> tuple[list, list]:
+    with open(file_path, "r") as file:
+        parsed_html = BeautifulSoup(file, features="lxml")
+    divs = parsed_html.body.find_all("div", attrs={'class': 'content-cell'})
+    money_divs = [divs[i] for i in range(len(divs)) if i % 3 == 0]
+    transaction_divs = [divs[i + 2] for i in range(len(divs)) if i % 3 == 0]
+    return money_divs, transaction_divs
 
-    parser = argparse.ArgumentParser(description="spending tracker for google pay",
-                                     epilog="Hope that helps!!")
-    parser.add_argument('-ecsv',
-                        help= "export contents as csv",
-                        action="store_true")
-    args = parser.parse_args()
+def process_transactions(money_divs: list, transaction_divs: list) -> dict:
+    categories = {
+        "travel": ["IRCTC"],
+        "entertainment": ["BOOKMYSHOW", "LA CINEMA"],
+        "stocks": ["Zerodha"],
+        "online_purchase": ["Flipkart", "Amazon"]
+    }
 
-    f = open("takeout.html", "r").read()
-    parsed_html = BeautifulSoup(f, features="lxml")
-    divs = parsed_html.body.find_all("div", attrs={'class' : 'content-cell'})
-    money_divs = [divs[i] for i in range(len(divs)) if i%3 == 0]
-    transaction_divs = [divs[i+2] for i in range(len(divs)) if i%3 == 0]
-
-    travel = ["IRCTC"]
-    entertainment = ["BOOKMYSHOW", "LA CINEMA"]
-    stocks = ["Zerodha"]
-    online_purchase = ["Flipkart", "Amazon"]
-    
-    expense = Expense()
-
-    # monthly spending
-    monthly_spendings = {}
-    rs = {"debit" : 0, "credit" : 0}
     months = "Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec".split(",")
-    for i in months :
-        monthly_spendings[i] = copy.deepcopy(expense)
-    
-    for i in range(len(money_divs)) :
-        if "Completed" in transaction_divs[i].text :
-            split_comps = money_divs[i].text.split(" ")
-            amount = split_comps[1].split(".")[0]
-            amount = int(amount[1:].replace(",",""))
-            month = split_comps[-5][len(split_comps[-5]) - 3:]
-            if "2024" in split_comps[-3] and amount < 5000:    
-                if "Received" in money_divs[i].text :
-                    monthly_spendings[month].total_credit += amount 
-                else :
-                    monthly_spendings[month].total_debit += amount
+    monthly_spendings = {month: Expense() for month in months}
 
-                check_add(travel, money_divs[i].text, monthly_spendings[month], "travel", amount)
-                check_add(entertainment, money_divs[i].text, monthly_spendings[month], "entertainment", amount)
-                check_add(stocks, money_divs[i].text, monthly_spendings[month], "stocks", amount)
-                check_add(online_purchase, money_divs[i].text, monthly_spendings[month], "online_purchase", amount)
+    for money_div, transaction_div in zip(money_divs, transaction_divs):
+        if "Completed" not in transaction_div.text:
+            continue
 
+        split_comps = money_div.text.split(" ")
+        amount = split_comps[1].split(".")[0]
+        amount = int(amount[1:].replace(",", ""))
+        month = split_comps[-5][-3:]
+
+        if "2024" not in split_comps[-3] or amount >= 5000:
+            continue
+
+        if "Received" in money_div.text:
+            monthly_spendings[month].total_credit += amount
+        else:
+            monthly_spendings[month].total_debit += amount
+
+        for category, options in categories.items():
+            add_expense_to_category(options, money_div.text, monthly_spendings[month], category, amount)
+
+    return monthly_spendings
+
+def print_table(monthly_spendings: dict):
     table = PrettyTable()
     table.field_names = ["Month", "Debit", "Credit", "Net", "Travel", "Entertainment", "Online Purchase", "Stocks"]
-    for i in months: 
-        table.add_row([i,
-                      monthly_spendings[i].total_debit, 
-                      monthly_spendings[i].total_credit, 
-                      monthly_spendings[i].total_debit-monthly_spendings[i].total_credit, 
-                      check_category("travel", monthly_spendings[i]), 
-                      check_category("entertainment", monthly_spendings[i]), 
-                      check_category("online_purchase", monthly_spendings[i]),
-                      check_category("stocks", monthly_spendings[i])])
+
+    for month, expense in monthly_spendings.items():
+        table.add_row([
+            month,
+            expense.total_debit,
+            expense.total_credit,
+            expense.total_debit - expense.total_credit,
+            check_category("travel", expense),
+            check_category("entertainment", expense),
+            check_category("online_purchase", expense),
+            check_category("stocks", expense)
+        ])
+
     print(table)
 
-    if args.ecsv :
-        with open('test.csv', 'w', newline='') as f_output:
-            f_output.write(table.get_csv_string())
+def calculate_average_spending(monthly_spendings: dict):
+    total_spending = 0
+    active_months = 0
 
-if __name__ == "__main__" :
+    for expense in monthly_spendings.values():
+        net_spending = expense.total_debit - expense.total_credit
+        if net_spending != 0:
+            total_spending += net_spending
+            active_months += 1
+
+    return total_spending / active_months if active_months else 0
+
+def export_to_csv(table: PrettyTable, file_name: str):
+    with open(file_name, 'w', newline='') as file:
+        file.write(table.get_csv_string())
+
+def main():
+    parser = argparse.ArgumentParser(description="Spending tracker for Google Pay", epilog="Hope that helps!!")
+    parser.add_argument('-ecsv', help="Export contents as CSV", action="store_true")
+    parser.add_argument('-avg', help="Show average per month spending", action="store_true")
+    args = parser.parse_args()
+
+    money_divs, transaction_divs = parse_html_file("takeout.html")
+    monthly_spendings = process_transactions(money_divs, transaction_divs)
+    print_table(monthly_spendings)
+
+    if args.avg:
+        average_spending = "{:.2f}".format(calculate_average_spending(monthly_spendings))
+        print(f'Average per month spending: {average_spending}')
+
+    if args.ecsv:
+        table = PrettyTable()
+        table.field_names = ["Month", "Debit", "Credit", "Net", "Travel", "Entertainment", "Online Purchase", "Stocks"]
+        for month, expense in monthly_spendings.items():
+            table.add_row([
+                month,
+                expense.total_debit,
+                expense.total_credit,
+                expense.total_debit - expense.total_credit,
+                check_category("travel", expense),
+                check_category("entertainment", expense),
+                check_category("online_purchase", expense),
+                check_category("stocks", expense)
+            ])
+        export_to_csv(table, 'test.csv')
+
+if __name__ == "__main__":
     main()
