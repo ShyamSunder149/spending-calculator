@@ -1,0 +1,6 @@
+{
+  "travel" : ["IRCTC"],
+  "entertainment" : ["LA CINEMA", "BOOKMYSHOW"],
+  "stocks" : ["zerodha"],
+  "online_purchase" : ["flipkart", "amazon"]
+}
