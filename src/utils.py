@@ -7,8 +7,9 @@ def calculate_average_spending(monthly_spendings: dict) -> None:
     for expense in monthly_spendings.values():
         net_spending = expense.total_debit - expense.total_credit
         total_spending += net_spending if net_spending else 0
-
-    print(f'Average amount spent per month  : {total_spending / active_months if active_months else 0}')
+     
+    rounded_num = "{:.2f}".format(total_spending / active_months if active_months else 0)    
+    print(f'Average amount spent per month  : {rounded_num}')
 
 
 def construct_table(monthly_spendings: dict) -> PrettyTable:
